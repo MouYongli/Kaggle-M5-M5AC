@@ -11,7 +11,6 @@ event_type = ['Sporting', 'Cultural', 'National', 'Religious']
 # # Number of states are 3 and in total 10 stores are opened in those states
 state = ['CA', 'TX', 'WI']
 store = ['CA_1', 'CA_2', 'CA_3',  'CA_4', 'TX_1', 'TX_2', 'TX_3', 'WI_1', 'WI_2', 'WI_3']
-
 category = ['FOODS', 'HOBBIES', 'HOUSEHOLD']
 department = ['FOODS_1', 'FOODS_2', 'FOODS_3', 'HOBBIES_1', 'HOBBIES_2', 'HOUSEHOLD_1', 'HOUSEHOLD_2']
 

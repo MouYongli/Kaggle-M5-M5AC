@@ -1,0 +1,6 @@
+model:penet
+activation:sigmoid
+lr:1e-05
+weight_decay:0.0005
+epochs:500
+batch_size:512

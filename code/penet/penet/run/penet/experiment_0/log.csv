@@ -1,0 +1,1 @@
+epoch,iteration,train/loss,train/acc,train/acc_cls,train/mean_iu,train/fwavacc,valid/loss,valid/acc,valid/acc_cls,valid/mean_iu,valid/fwavacc,elapsed_time
