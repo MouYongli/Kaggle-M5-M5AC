@@ -3,6 +3,7 @@ import tqdm
 import os
 import os.path as osp
 import torch
+import torch.nn as nn
 from torch.autograd import Variable
 
 import sys
@@ -11,6 +12,7 @@ sys.path.append('../../')
 from penet.datasets.walmartdataset import WalmartDataset
 from penet.models.penet import PENet
 from penet.utils.saver import Saver
+from penet.utils.summaries import TensorboardSummary
 from penet.utils.metrics import Evaluator
 
 here = osp.dirname(osp.abspath(__file__))
@@ -22,6 +24,10 @@ class Trainer(object):
         self.saver = Saver(args)
         self.saver.save_experiment_config()
 
+        # Define Tensorboard Summary
+        self.summary = TensorboardSummary(self.saver.experiment_dir)
+        self.writer = self.summary.create_summary()
+
         # Define Dataloader
         kwargs = {'num_workers': args.workers, 'pin_memory': True}
         self.train_loader = torch.utils.data.DataLoader(WalmartDataset(split='train', transform=True), batch_size=args.batch_size, shuffle=True, **kwargs)
@@ -31,10 +37,10 @@ class Trainer(object):
         self.model = PENet()
 
         # Define Optimizer
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
         # Define Criterion
-        # TODO
+        self.criterion = nn.CrossEntropyLoss()
 
         # Define Evaluator
         # self.evaluator = Evaluator(self.nclass)
@@ -58,16 +64,49 @@ class Trainer(object):
 
     def training(self, epoch):
         train_loss = 0.0
+        item_loss = 0.0
+        dept_loss = 0.0
+        cat_loss = 0.0
+        store_loss = 0.0
+        state_loss = 0.0
         self.model.train()
         for batch_idx, sample in tqdm.tqdm(enumerate(self.train_loader), total=len(self.train_loader), desc='Train epoch=%d' % epoch, ncols=80, leave=False):
             iteration = batch_idx + epoch * len(self.train_loader)
-            p_id, item_id, dept_id, cat_id, store_id, state_id = sample['p_id'], sample['item_id'], sample['dept_id'], sample['cat_id'], sample['store_id'], sample['state_id']
+            p_id, item_id_gt, dept_id_gt, cat_id_gt, store_id_gt, state_id_gt = sample['p_id'], sample['item_id'], sample['dept_id'], sample['cat_id'], sample['store_id'], sample['state_id']
             assert self.model.training
             if self.cuda:
-                p_id, item_id, dept_id, cat_id, store_id, state_id = p_id.cuda(), item_id.cuda(), dept_id.cuda(), cat_id.cuda(), store_id.cuda(), state_id.cuda()
-            p_id, item_id, dept_id, cat_id, store_id, state_id = Variable(p_id), Variable(item_id), Variable(dept_id), Variable(cat_id), Variable(store_id), Variable(state_id)
+                p_id, item_id_gt, dept_id_gt, cat_id_gt, store_id_gt, state_id_gt = p_id.cuda(), item_id_gt.cuda(), dept_id_gt.cuda(), cat_id_gt.cuda(), store_id_gt.cuda(), state_id_gt.cuda()
+            p_id, item_id_gt, dept_id_gt, cat_id_gt, store_id_gt, state_id_gt = Variable(p_id), Variable(item_id_gt), Variable(dept_id_gt), Variable(cat_id_gt), Variable(store_id_gt), Variable(state_id_gt)
             self.optimizer.zero_grad()
-            item_id_pred, dept_id_pred, cat_id_pred, store_id_pred, state_id_pred = self.model(p_id)
+            # forward propagation
+            vec, item_id_pred, dept_id_pred, cat_id_pred, store_id_pred, state_id_pred = self.model(p_id)
+            # Calculate losses
+            print(item_id_pred.shape)
+            print(item_id_gt.shape)
+            item_loss = self.criterion(item_id_pred, item_id_gt)
+            dept_loss = self.criterion(dept_id_pred, dept_id_gt)
+            cat_loss = self.criterion(cat_id_pred, cat_id_gt)
+            store_loss = self.criterion(store_id_pred, store_id_gt)
+            state_loss = self.criterion(state_id_pred, state_id_gt)
+            loss = item_loss + dept_loss + cat_loss + store_loss + state_loss
+            # backward propagation
+            loss.backward()
+            self.optimizer.step()
+            train_loss += loss.item()
+            self.writer.add_scalar('train/total_loss_iter', loss.item(), iteration)
+            self.writer.add_scalar('train/item_loss_iter', item_loss.item(), iteration)
+            self.writer.add_scalar('train/dept_loss_iter', dept_loss.item(), iteration)
+            self.writer.add_scalar('train/cat_loss_iter', cat_loss.item(), iteration)
+            self.writer.add_scalar('train/store_loss_iter', store_loss.item(), iteration)
+            self.writer.add_scalar('train/state_loss_iter', state_loss.item(), iteration)
+            print('------------------------------------------------------')
+            print('iteration', iteration)
+            print('train/total_loss_iter ', loss.item())
+            print('train/item_loss_iter ', item_loss.item())
+            print('train/dept_loss_iter ', dept_loss.item())
+            print('train/cat_loss_iter ', cat_loss.item())
+            print('train/store_loss_iter ', store_loss.item())
+            print('train/state_loss_iter ', state_loss.item())
 
     def validation(self, epoch):
         pass
@@ -129,7 +168,7 @@ def main():
             raise ValueError('Argument --gpu_ids must be a comma-separated list of integers only')
     # default settings for epochs, batch_size and lr
     if args.epochs is None:
-        args.epochs = 500
+        args.epochs = 10
     torch.manual_seed(args.seed)
     trainer = Trainer(args)
     print('Starting Epoch:', trainer.args.start_epoch)

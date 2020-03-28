@@ -41,7 +41,7 @@ class WalmartDataset(Dataset):
         # cat_id[row['cat_id']] = 1
         # store_id[row['store_id']] = 1
         # state_id[row['state_id']] = 1
-        item_id = np.array([row['item_id']])
+        item_id = np.array(row['item_id'])
         dept_id = np.array(row['dept_id'])
         cat_id = np.array(row['cat_id'])
         store_id = np.array(row['store_id'])

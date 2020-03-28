@@ -9,7 +9,7 @@ import glob
 class Saver(object):
     def __init__(self, args):
         self.args = args
-        self.directory = osp.join(args.out, 'run', args.model)
+        self.directory = osp.join(args.out, 'log', args.model)
         self.runs = sorted(glob.glob(osp.join(self.directory, 'experiment_*')))
         run_id = int(self.runs[-1].split('_')[-1]) + 1 if self.runs else 0
         self.experiment_dir = osp.join(self.directory, 'experiment_{}'.format(str(run_id)))
@@ -19,24 +19,24 @@ class Saver(object):
         else:
             self.experiment_dir = args.resume
 
-        self.log_headers = [
-            'epoch',
-            'iteration',
-            'train/loss',
-            'train/acc',
-            'train/acc_cls',
-            'train/mean_iu',
-            'train/fwavacc',
-            'valid/loss',
-            'valid/acc',
-            'valid/acc_cls',
-            'valid/mean_iu',
-            'valid/fwavacc',
-            'elapsed_time',
-        ]
-        if not osp.exists(osp.join(self.experiment_dir, 'log.csv')):
-            with open(osp.join(self.experiment_dir, 'log.csv'), 'w') as f:
-                f.write(','.join(self.log_headers) + '\n')
+        # self.log_headers = [
+        #     'epoch',
+        #     'iteration',
+        #     'train/loss',
+        #     'train/acc',
+        #     'train/acc_cls',
+        #     'train/mean_iu',
+        #     'train/fwavacc',
+        #     'valid/loss',
+        #     'valid/acc',
+        #     'valid/acc_cls',
+        #     'valid/mean_iu',
+        #     'valid/fwavacc',
+        #     'elapsed_time',
+        # ]
+        # if not osp.exists(osp.join(self.experiment_dir, 'log.csv')):
+        #     with open(osp.join(self.experiment_dir, 'log.csv'), 'w') as f:
+        #         f.write(','.join(self.log_headers) + '\n')
 
     def save_experiment_config(self):
         logfile = osp.join(self.experiment_dir, 'parameters.txt')

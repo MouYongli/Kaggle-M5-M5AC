@@ -1,6 +1,6 @@
-import numpy as np
 import torch
 import torch.nn as nn
+import numpy as np
 
 
 class PENet(nn.Module):
@@ -29,6 +29,8 @@ class PENet(nn.Module):
         self.vec2store = nn.Linear(512, 10)
         self.store2state = nn.Linear(10, 3)
 
+        self._initialize_weights()
+
     def forward(self, x):
         h = self.activation(self.p2vec(x))
         h = self.activation(self.hidden(h))
@@ -46,10 +48,18 @@ class PENet(nn.Module):
         # else:
         #     return vec
 
-
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                torch.nn.init.xavier_uniform_(m.weight)
+                m.bias.data.fill_(0.01)
+                # size = m.weight.size()
+                # fan_out = size[0]  # number of rows
+                # fan_in = size[1]  # number of columns
+                # variance = np.sqrt(2.0 / (fan_in + fan_out))
+                # m.weight.data.normal_(0.0, variance)
 
 if __name__ == "__main__":
-
     model = PENet()
     x = torch.randn(256, 30490)
     import datetime

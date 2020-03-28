@@ -5,8 +5,8 @@ from penet.models.penet import PENet
 from penet.datasets.walmartdataset import WalmartDataset
 
 model = PENet()
-train_loader= torch.utils.data.DataLoader(WalmartDataset(split='train', transform=True), batch_size=1, shuffle=True)
-criterion = nn.CrossEntropyLoss()
+train_loader= torch.utils.data.DataLoader(WalmartDataset(split='train', transform=True), batch_size=2, shuffle=True)
+criterion = nn.CrossEntropyLoss(reduction='sum')
 batch_idx, sample = next(enumerate(train_loader))
 p_id, item_id, dept_id, cat_id, store_id, state_id = sample['p_id'], sample['item_id'], sample['dept_id'], sample[
         'cat_id'], sample['store_id'], sample['state_id']
@@ -21,6 +21,6 @@ p_id, item_id, dept_id, cat_id, store_id, state_id = Variable(p_id), Variable(it
 model.eval()
 vec, item_id_pred, dept_id_pred, cat_id_pred, store_id_pred, state_id_pred = model(p_id)
 loss = criterion(state_id_pred, state_id)
-print(state_id)
-print(state_id_pred)
+print(state_id.shape)
+print(state_id_pred.shape)
 print(loss)
