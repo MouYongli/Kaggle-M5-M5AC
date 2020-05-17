@@ -1,5 +1,4 @@
 original-data/*
-code/penet/.idea/*
-code/penet/data/train_validation.csv
-code/penet/data/train_validation_sorted.csv
-code/penet/data/sales_train_validation.csv
+code/Yongli/m5net/.idea/*
+code/Yongli/m5net/data/*
+code/Yongli/m5net/log/*
