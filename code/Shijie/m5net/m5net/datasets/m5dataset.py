@@ -21,7 +21,11 @@ class M5Dataset(Dataset):
             self.root_dir = ROOT_DIR
         self.split = split
         self._transform = transform
-        self.train_validation = pd.read_csv(osp.join(self.root_dir, 'sales_train_validation.csv'))
+        if self.split == 'train':
+            self.train_validation = pd.read_csv(osp.join(self.root_dir, 'sales_train_validation.csv'))
+        if self.split == 'valid':
+            self.train_validation = pd.read_csv(osp.join(self.root_dir, 'sales_train_evaluation.csv'))
+
         self.calendar = pd.read_csv(osp.join(self.root_dir, 'calendar.csv'))
         self.sell_prices = pd.read_csv(osp.join(self.root_dir, 'sell_prices.csv'))
 

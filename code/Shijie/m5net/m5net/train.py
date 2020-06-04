@@ -11,17 +11,26 @@ import numpy as np
 import torch.nn as nn
 import os.path as osp
 import wandb
+
+# wandb.login(key='b9588fd28f7f6e7610d68daf4434db0bd8a3553e')
+wandb.init(project="m5dataset")
+wandb.watch_called = False
+config = wandb.config  # Initialize config
+config.seed = 666
 from torch.autograd import Variable
 
 import sys
+
 sys.path.append('../')
 from m5net.datasets.m5dataset import M5Dataset
 from m5net.models.m5net import M5Net
 
 here = osp.dirname(osp.abspath(__file__))
 
+
 class Trainer(object):
-    def __init__(self, cuda, model, optimizer, train_loader, val_loader, out, epochs, best_mse=np.inf, interval_validate=None):
+    def __init__(self, cuda, model, optimizer, train_loader, val_loader, out, epochs, best_mse=np.inf,
+                 interval_validate=None):
         self.cuda = cuda
         self.model = model
         self.optim = optimizer
@@ -59,24 +68,30 @@ class Trainer(object):
         training = self.model.training
         self.model.eval()
         val_loss = 0
-        for batch_idx, (pid, sid, products, events, calendar_prices, unit_sales) in tqdm.tqdm(enumerate(self.val_loader), total=len(self.val_loader), desc='Valid iteration=%d' % self.iteration, ncols=80, leave=False):
+        for batch_idx, (pid, sid, products, events, calendar_prices, unit_sales) in tqdm.tqdm(
+                enumerate(self.val_loader), total=len(self.val_loader), desc='Valid iteration=%d' % self.iteration,
+                ncols=80, leave=False):
             if self.cuda:
                 products, events, calendar_prices, unit_sales = products.cuda(), events.cuda(), calendar_prices.cuda(), unit_sales.cuda()
-            products, events, calendar_prices, unit_sales = Variable(products), Variable(events), Variable(calendar_prices), Variable(unit_sales)
+            products, events, calendar_prices, unit_sales = Variable(products), Variable(events), Variable(
+                calendar_prices), Variable(unit_sales)
             with torch.no_grad():
                 predict_sales = self.model(products, events, calendar_prices)
             loss = self.loss_fn(predict_sales, unit_sales)
-            loss_data = loss.data.mean(axis=1).view(3).numpy()
+            loss_data = loss.item()
             if np.isnan(loss_data):
                 raise ValueError('loss is nan while validating')
-            val_loss += loss_data.mean()
-            with open(osp.join(self.out, 'valid_log.csv'), 'a') as f:
-                elapsed_time = (datetime.datetime.now(pytz.timezone('Asia/Tokyo')) - self.timestamp_start).total_seconds()
-                for (p, s, l) in zip(pid, sid, loss_data):
-                    log = [self.epoch, p, s, l ,elapsed_time]
-                    log = map(str, log)
-                    f.write(','.join(log) + '\n')
+            val_loss += loss_data
+            # with open(osp.join(self.out, 'valid_log.csv'), 'a') as f:
+            #     elapsed_time = (
+            #                 datetime.datetime.now(pytz.timezone('Asia/Tokyo')) - self.timestamp_start).total_seconds()
+            #     for (p, s, l) in zip(pid, sid, loss_data):
+            #         log = [self.epoch, p, s, l, elapsed_time]
+            #         log = map(str, log)
+            #         f.write(','.join(log) + '\n')
         val_loss = val_loss / len(self.val_loader)
+        wandb.log({'val_loss':val_loss})
+        wandb.run.summary['vali_loss'] = val_loss
         with open(osp.join(self.out, 'valid_log.csv'), 'a') as f:
             elapsed_time = (datetime.datetime.now(pytz.timezone('Asia/Tokyo')) - self.timestamp_start).total_seconds()
             log = [self.epoch, '-', '-', val_loss, elapsed_time]
@@ -96,12 +111,15 @@ class Trainer(object):
         if is_best:
             shutil.copy(osp.join(self.out, 'checkpoint.pth.tar'),
                         osp.join(self.out, 'model_best.pth.tar'))
+            wandb.save('model_best.h5')
         if training:
             self.model.train()
 
     def train_epoch(self):
         self.model.train()
-        for batch_idx, (pid, sid, products, events, calendar_prices, unit_sales) in tqdm.tqdm(enumerate(self.train_loader), total=len(self.train_loader), desc='Train epoch=%d' % self.epoch, ncols=80, leave=False):
+        for batch_idx, (pid, sid, products, events, calendar_prices, unit_sales) in tqdm.tqdm(
+                enumerate(self.train_loader), total=len(self.train_loader), desc='Train epoch=%d' % self.epoch,
+                ncols=80, leave=False):
             iteration = batch_idx + self.epoch * len(self.train_loader)
             if self.iteration != 0 and (iteration - 1) != self.iteration:
                 continue
@@ -118,6 +136,7 @@ class Trainer(object):
             loss = self.loss_fn(predict_sales, unit_sales)
             loss.backward()
             self.optim.step()
+        wandb.log({'batch':batch_idx, 'batch_loss': loss})
 
     def train(self):
         max_epoch = self.epochs
@@ -148,7 +167,6 @@ def main():
     args = parser.parse_args()
 
     args.model = 'M5Net'
-
     directory = os.path.join(here, 'log', args.model, args.version, 'run')
     runs = sorted(glob.glob(os.path.join(directory, 'experiment_*')))
     run_id = int(runs[-1].split('_')[-1]) + 1 if runs else 0
@@ -157,10 +175,11 @@ def main():
         os.makedirs(args.out)
     with open(osp.join(args.out, 'config.yaml'), 'w') as f:
         yaml.safe_dump(args.__dict__, f, default_flow_style=False)
-
+    wandb.config.update(args)
+    args = wandb.config
     os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
     cuda = torch.cuda.is_available()
-    from setting import seed
+    seed = config.seed
     torch.manual_seed(seed)
     if cuda:
         torch.cuda.manual_seed(seed)
@@ -170,7 +189,7 @@ def main():
     train_loader = torch.utils.data.DataLoader(M5Dataset(split='train', transform=True), batch_size=args.batch_size,
                                                shuffle=True, **kwargs)
     val_loader = torch.utils.data.DataLoader(M5Dataset(split='valid', transform=True), batch_size=args.batch_size,
-                                               shuffle=False, **kwargs)
+                                             shuffle=False, **kwargs)
 
     # 2. model
     model = M5Net(embedding_dim=args.embedding_dim, hidden_dim=args.hidden_dim, n_layer=args.n_layer)
@@ -191,7 +210,7 @@ def main():
     optim = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     if args.resume:
         optim.load_state_dict(checkpoint['optim_state_dict'])
-
+    wandb.watch(model)
     trainer = Trainer(
         cuda=cuda,
         model=model,
@@ -199,12 +218,13 @@ def main():
         train_loader=train_loader,
         val_loader=val_loader,
         out=args.out,
-        epochs = args.epochs,
-        best_mse = best_mse
+        epochs=args.epochs,
+        best_mse=best_mse,
     )
     trainer.epoch = start_epoch
     trainer.iteration = start_iteration
     trainer.train()
+
 
 if __name__ == '__main__':
     main()
