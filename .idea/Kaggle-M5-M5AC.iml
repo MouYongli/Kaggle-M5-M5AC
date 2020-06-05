@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="PYTHON_MODULE" version="4">
+  <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/code/Yongli/m5net/m5net" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/code/Shijie/m5net/m5net" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/code/Shijie/m5net" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/code/Shijie/m5net/data" />
+      <excludeFolder url="file://$MODULE_DIR$/code/Yongli/m5net/data" />
+    </content>
+    <orderEntry type="jdk" jdkName="Remote Python 3.7.4 (sftp://shijie@13.113.239.251:4051/home/shijie/anaconda3/bin/python)" jdkType="Python SDK" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+  <component name="PyDocumentationSettings">
+    <option name="renderExternalDocumentation" value="true" />
+  </component>
+</module>
